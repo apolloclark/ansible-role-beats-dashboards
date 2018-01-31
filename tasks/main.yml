@@ -1,0 +1,26 @@
+---
+# http://docs.ansible.com/ansible/latest/set_fact_module.html
+- name: Merge beatsdashboards_default and beatsdashboards variables
+  set_fact:
+    beatsdashboards_combined: "{{ beatsdashboards_defaults | combine(beatsdashboards, recursive=True) }}"
+
+- name: Download all dashboard
+  get_url:
+    url={{ elastic_url }}/downloads/beats/beats-dashboards/beats-dashboards-{{ beatsdashboards_combined.version }}.zip
+    dest=/opt/dashboards.zip
+
+- name: Load the Filebeat dashboard
+  command: /usr/share/filebeat/scripts/import_dashboards -file /opt/dashboards.zip
+
+- name: Load the Heartbeat dashboard
+  command: /usr/share/heartbeat/scripts/import_dashboards -file /opt/dashboards.zip
+
+- name: Load the Metricbeat dashboard
+  command: /usr/share/metricbeat/scripts/import_dashboards -file /opt/dashboards.zip
+
+- name: Load the Packetbeat dashboard
+  command: /usr/share/packetbeat/scripts/import_dashboards -file /opt/dashboards.zip
+
+- name: Add a default index pattern using Metricbeat
+  command: >
+    curl -XPUT 'http://localhost:9200/.kibana/config/{{ beatsdashboards_combined.version }}' -H "Content-Type: application/json" -d '{"defaultIndex" : "metricbeat-*"}'
